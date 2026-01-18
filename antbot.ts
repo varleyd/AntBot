@@ -1,124 +1,139 @@
 /**
  * AntBot Controller for BBC Micro:bit V2
+ * Compatible with official micro:bit iOS app gamepad
  *
  * Controls:
  * - Left wheel servo: P0
  * - Right wheel servo: P1
  * - Ram servo: P2
  *
- * Compatible with EV-Micro:bit app via Bluetooth UART
+ * Gamepad mapping:
+ * - D-pad Up: Forward
+ * - D-pad Down: Backward
+ * - D-pad Left: Turn left
+ * - D-pad Right: Turn right
+ * - Button A: Trigger ram
+ * - Button B: Stop (safety)
  */
 
 // Servo configuration for FS90R continuous rotation servos
-// 90 = stop, 0 = full speed clockwise, 180 = full speed counter-clockwise
+// 90 = stop, 0 = full speed one way, 180 = full speed other way
 const SERVO_STOP = 90
-const SERVO_FORWARD_LEFT = 0      // Left wheel forward
-const SERVO_REVERSE_LEFT = 180    // Left wheel reverse
-const SERVO_FORWARD_RIGHT = 180   // Right wheel forward (opposite direction)
-const SERVO_REVERSE_RIGHT = 0     // Right wheel reverse
+const SERVO_FORWARD_LEFT = 0
+const SERVO_REVERSE_LEFT = 180
+const SERVO_FORWARD_RIGHT = 180
+const SERVO_REVERSE_RIGHT = 0
 
 // Ram servo configuration
 const RAM_DOWN = 0
 const RAM_UP = 45
-const RAM_DELAY_MS = 150  // Time to hold ram up before dropping
+const RAM_DELAY_MS = 150
 
-// Initialize servos to stopped/rest position
+// Initialize servos
 pins.servoWritePin(AnalogPin.P0, SERVO_STOP)
 pins.servoWritePin(AnalogPin.P1, SERVO_STOP)
 pins.servoWritePin(AnalogPin.P2, RAM_DOWN)
 
-// Show device name pattern for pairing
-basic.showString("AB")
-basic.pause(500)
-
-// Start Bluetooth UART service
-bluetooth.startUartService()
-
-// Advertise the device name so the app can find it
-bluetooth.setTransmitPower(7)  // Max power for better range
-
-// Show heart to indicate ready and waiting for connection
+// Show ready
 basic.showIcon(IconNames.Heart)
 
-// Handle Bluetooth connection
-bluetooth.onBluetoothConnected(function () {
-    basic.showIcon(IconNames.Yes)
-})
-
-bluetooth.onBluetoothDisconnected(function () {
-    // Stop all motors when disconnected
-    stopMotors()
-    basic.showIcon(IconNames.No)
-})
-
-// Stop all drive motors
+// Movement functions
 function stopMotors() {
     pins.servoWritePin(AnalogPin.P0, SERVO_STOP)
     pins.servoWritePin(AnalogPin.P1, SERVO_STOP)
 }
 
-// Drive forward - both wheels forward
 function driveForward() {
     pins.servoWritePin(AnalogPin.P0, SERVO_FORWARD_LEFT)
     pins.servoWritePin(AnalogPin.P1, SERVO_FORWARD_RIGHT)
 }
 
-// Drive backward - both wheels reverse
 function driveBackward() {
     pins.servoWritePin(AnalogPin.P0, SERVO_REVERSE_LEFT)
     pins.servoWritePin(AnalogPin.P1, SERVO_REVERSE_RIGHT)
 }
 
-// Turn left - left wheel reverse, right wheel forward
 function turnLeft() {
     pins.servoWritePin(AnalogPin.P0, SERVO_REVERSE_LEFT)
     pins.servoWritePin(AnalogPin.P1, SERVO_FORWARD_RIGHT)
 }
 
-// Turn right - left wheel forward, right wheel reverse
 function turnRight() {
     pins.servoWritePin(AnalogPin.P0, SERVO_FORWARD_LEFT)
     pins.servoWritePin(AnalogPin.P1, SERVO_REVERSE_RIGHT)
 }
 
-// Trigger ram - quick raise and drop
 function triggerRam() {
     pins.servoWritePin(AnalogPin.P2, RAM_UP)
     basic.pause(RAM_DELAY_MS)
     pins.servoWritePin(AnalogPin.P2, RAM_DOWN)
 }
 
-// Listen for commands from EV-Micro:bit app via Bluetooth UART
-bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () {
-    let command = bluetooth.uartReadUntil(serial.delimiters(Delimiters.NewLine))
-
-    // Process movement commands from EV-Micro:bit app
-    if (command.includes("F") || command.includes("forward")) {
-        driveForward()
-    } else if (command.includes("B") || command.includes("backward") || command.includes("back")) {
-        driveBackward()
-    } else if (command.includes("L") || command.includes("left")) {
-        turnLeft()
-    } else if (command.includes("R") || command.includes("right")) {
-        turnRight()
-    } else if (command.includes("S") || command.includes("stop")) {
-        stopMotors()
-    } else if (command.includes("A") || command.includes("action") || command.includes("ram")) {
-        triggerRam()
-    }
+// Gamepad D-pad controls
+devices.onGamepadButton(MesDpadButtonInfo.ADown, function () {
+    driveForward()
+    basic.showArrow(ArrowNames.North)
 })
 
-// Manual controls using Micro:bit buttons (for testing without app)
+devices.onGamepadButton(MesDpadButtonInfo.AUp, function () {
+    stopMotors()
+    basic.showIcon(IconNames.Yes)
+})
+
+devices.onGamepadButton(MesDpadButtonInfo.CDown, function () {
+    driveBackward()
+    basic.showArrow(ArrowNames.South)
+})
+
+devices.onGamepadButton(MesDpadButtonInfo.CUp, function () {
+    stopMotors()
+    basic.showIcon(IconNames.Yes)
+})
+
+devices.onGamepadButton(MesDpadButtonInfo.DDown, function () {
+    turnLeft()
+    basic.showArrow(ArrowNames.West)
+})
+
+devices.onGamepadButton(MesDpadButtonInfo.DUp, function () {
+    stopMotors()
+    basic.showIcon(IconNames.Yes)
+})
+
+devices.onGamepadButton(MesDpadButtonInfo.BDown, function () {
+    turnRight()
+    basic.showArrow(ArrowNames.East)
+})
+
+devices.onGamepadButton(MesDpadButtonInfo.BUp, function () {
+    stopMotors()
+    basic.showIcon(IconNames.Yes)
+})
+
+// Gamepad action buttons
+devices.onGamepadButton(MesDpadButtonInfo.OneDown, function () {
+    triggerRam()
+    basic.showIcon(IconNames.Sword)
+    basic.pause(200)
+    basic.showIcon(IconNames.Yes)
+})
+
+devices.onGamepadButton(MesDpadButtonInfo.TwoDown, function () {
+    stopMotors()
+    basic.showIcon(IconNames.No)
+})
+
+// Physical micro:bit buttons (backup controls)
 input.onButtonPressed(Button.A, function () {
     triggerRam()
 })
 
 input.onButtonPressed(Button.B, function () {
     stopMotors()
+    basic.showIcon(IconNames.No)
 })
 
-// Accelerometer control fallback (tilt to drive)
-input.onButtonPressed(Button.AB, function () {
-    // Toggle accelerometer mode indicator
-    basic.showString("T")
+// Connection status
+devices.onNotified(MesDeviceInfo.IncomingCall, function () {
+    basic.showIcon(IconNames.Yes)
 })
