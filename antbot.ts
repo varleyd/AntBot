@@ -27,11 +27,18 @@ pins.servoWritePin(AnalogPin.P0, SERVO_STOP)
 pins.servoWritePin(AnalogPin.P1, SERVO_STOP)
 pins.servoWritePin(AnalogPin.P2, RAM_DOWN)
 
-// Show heart on startup to indicate ready
-basic.showIcon(IconNames.Heart)
+// Show device name pattern for pairing
+basic.showString("AB")
+basic.pause(500)
 
 // Start Bluetooth UART service
 bluetooth.startUartService()
+
+// Advertise the device name so the app can find it
+bluetooth.setTransmitPower(7)  // Max power for better range
+
+// Show heart to indicate ready and waiting for connection
+basic.showIcon(IconNames.Heart)
 
 // Handle Bluetooth connection
 bluetooth.onBluetoothConnected(function () {
