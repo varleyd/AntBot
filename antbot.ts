@@ -1,41 +1,45 @@
 /**
  * AntBot Controller for BBC Micro:bit V2
- * Compatible with official micro:bit iOS app gamepad
+ * Compatible with EV-Micro:bit iOS app
  *
- * Controls:
- * - Left wheel servo: P0
- * - Right wheel servo: P1
- * - Ram servo: P2
- *
- * Gamepad mapping:
- * - D-pad Up: Forward
- * - D-pad Down: Backward
- * - D-pad Left: Turn left
- * - D-pad Right: Turn right
- * - Button A: Trigger ram
- * - Button B: Stop (safety)
+ * Servos:
+ * - P0: Left wheel (FS90R continuous)
+ * - P1: Right wheel (FS90R continuous)
+ * - P2: Ram servo
  */
 
 // Servo configuration for FS90R continuous rotation servos
-// 90 = stop, 0 = full speed one way, 180 = full speed other way
 const SERVO_STOP = 90
 const SERVO_FORWARD_LEFT = 0
 const SERVO_REVERSE_LEFT = 180
 const SERVO_FORWARD_RIGHT = 180
 const SERVO_REVERSE_RIGHT = 0
 
-// Ram servo configuration
+// Ram servo
 const RAM_DOWN = 0
 const RAM_UP = 45
 const RAM_DELAY_MS = 150
+
+let data = ""
 
 // Initialize servos
 pins.servoWritePin(AnalogPin.P0, SERVO_STOP)
 pins.servoWritePin(AnalogPin.P1, SERVO_STOP)
 pins.servoWritePin(AnalogPin.P2, RAM_DOWN)
 
-// Show ready
+// Start Bluetooth UART
+bluetooth.startUartService()
 basic.showIcon(IconNames.Heart)
+
+// Connection handlers
+bluetooth.onBluetoothConnected(function () {
+    basic.showIcon(IconNames.Happy)
+})
+
+bluetooth.onBluetoothDisconnected(function () {
+    stopMotors()
+    basic.showIcon(IconNames.No)
+})
 
 // Movement functions
 function stopMotors() {
@@ -69,71 +73,46 @@ function triggerRam() {
     pins.servoWritePin(AnalogPin.P2, RAM_DOWN)
 }
 
-// Gamepad D-pad controls
-devices.onGamepadButton(MesDpadButtonInfo.ADown, function () {
-    driveForward()
-    basic.showArrow(ArrowNames.North)
+// Receive commands from EV-Micro:bit app (hash delimited)
+bluetooth.onUartDataReceived(serial.delimiters(Delimiters.Hash), function () {
+    data = bluetooth.uartReadUntil(serial.delimiters(Delimiters.Hash))
+
+    // Process commands - adjust these based on what the app sends
+    if (data == "F" || data == "f" || data == "forward") {
+        driveForward()
+        basic.showArrow(ArrowNames.North)
+    } else if (data == "B" || data == "b" || data == "backward") {
+        driveBackward()
+        basic.showArrow(ArrowNames.South)
+    } else if (data == "L" || data == "l" || data == "left") {
+        turnLeft()
+        basic.showArrow(ArrowNames.West)
+    } else if (data == "R" || data == "r" || data == "right") {
+        turnRight()
+        basic.showArrow(ArrowNames.East)
+    } else if (data == "S" || data == "s" || data == "stop") {
+        stopMotors()
+        basic.showIcon(IconNames.Happy)
+    } else if (data == "A" || data == "a" || data == "action") {
+        triggerRam()
+        basic.showIcon(IconNames.Sword)
+        basic.pause(100)
+        basic.showIcon(IconNames.Happy)
+    } else {
+        // Unknown command - display it for debugging
+        basic.showString(data)
+    }
 })
 
-devices.onGamepadButton(MesDpadButtonInfo.AUp, function () {
-    stopMotors()
-    basic.showIcon(IconNames.Yes)
-})
-
-devices.onGamepadButton(MesDpadButtonInfo.CDown, function () {
-    driveBackward()
-    basic.showArrow(ArrowNames.South)
-})
-
-devices.onGamepadButton(MesDpadButtonInfo.CUp, function () {
-    stopMotors()
-    basic.showIcon(IconNames.Yes)
-})
-
-devices.onGamepadButton(MesDpadButtonInfo.DDown, function () {
-    turnLeft()
-    basic.showArrow(ArrowNames.West)
-})
-
-devices.onGamepadButton(MesDpadButtonInfo.DUp, function () {
-    stopMotors()
-    basic.showIcon(IconNames.Yes)
-})
-
-devices.onGamepadButton(MesDpadButtonInfo.BDown, function () {
-    turnRight()
-    basic.showArrow(ArrowNames.East)
-})
-
-devices.onGamepadButton(MesDpadButtonInfo.BUp, function () {
-    stopMotors()
-    basic.showIcon(IconNames.Yes)
-})
-
-// Gamepad action buttons
-devices.onGamepadButton(MesDpadButtonInfo.OneDown, function () {
-    triggerRam()
-    basic.showIcon(IconNames.Sword)
-    basic.pause(200)
-    basic.showIcon(IconNames.Yes)
-})
-
-devices.onGamepadButton(MesDpadButtonInfo.TwoDown, function () {
-    stopMotors()
-    basic.showIcon(IconNames.No)
-})
-
-// Physical micro:bit buttons (backup controls)
+// Physical buttons for testing
 input.onButtonPressed(Button.A, function () {
     triggerRam()
 })
 
 input.onButtonPressed(Button.B, function () {
     stopMotors()
-    basic.showIcon(IconNames.No)
 })
 
-// Connection status
-devices.onNotified(MesDeviceInfo.IncomingCall, function () {
-    basic.showIcon(IconNames.Yes)
+basic.forever(function () {
+    // Main loop empty - all logic is event-driven
 })
