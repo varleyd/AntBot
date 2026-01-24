@@ -98,9 +98,9 @@ bluetooth.onUartDataReceived(serial.delimiters(Delimiters.Hash), function () {
         basic.showIcon(IconNames.Sword)
         basic.pause(100)
         basic.showIcon(IconNames.Happy)
-    } else {
-        // Unknown command - display it for debugging
-        basic.showString(data)
+    } else if (data == "Z" || data == "z") {
+        // Action button released - ram already returned, just show ready
+        basic.showIcon(IconNames.Happy)
     }
 })
 
